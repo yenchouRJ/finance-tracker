@@ -14,11 +14,13 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@react-navigation/native": "^7.1.33",
     "@tamagui/babel-plugin": "^2.0.0-rc.29",
     "@tamagui/config": "^2.0.0-rc.29",
     "@tamagui/core": "^2.0.0-rc.29",
     "@tamagui/font-inter": "^2.0.0-rc.29",
+    "@tamagui/lucide-icons": "^1.144.4",
     "@tamagui/metro-plugin": "^2.0.0-rc.29",
     "@tanstack/react-query": "^5.94.5",
     "expo": "~55.0.8",

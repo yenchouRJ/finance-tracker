@@ -2,10 +2,11 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { TamaguiProvider } from 'tamagui';
 import tamaguiConfig from '../theme/tamagui.config';
+import { initDB } from '@/services/db/schema';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -23,6 +24,7 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [dbInitialized, setDbInitialized] = useState(false);
   const [loaded, error] = useFonts({
     SpaceMono: require('../../assets/fonts/SpaceMono-Regular.ttf'),
     Inter: require('@tamagui/font-inter/otf/Inter-Medium.otf'),
@@ -35,12 +37,24 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    const setupDB = async () => {
+      try {
+        await initDB();
+        setDbInitialized(true);
+      } catch (err) {
+        console.error('Failed to initialize database', err);
+      }
+    };
+    setupDB();
+  }, []);
+
+  useEffect(() => {
+    if (loaded && dbInitialized) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, dbInitialized]);
 
-  if (!loaded) {
+  if (!loaded || !dbInitialized) {
     return null;
   }
 
