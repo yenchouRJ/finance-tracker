@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
-import { ScrollView } from 'react-native';
-import { YStack, XStack, Text, Button, Input, Label, Spinner } from 'tamagui';
-import { useForm, Controller } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
-import { useLedgerStore } from '@/stores/useLedgerStore';
-import { useTransactionStore } from '@/stores/useTransactionStore';
+import React, { useState } from "react";
+import { ScrollView } from "react-native";
+import { YStack, XStack, Text, Button, Input, Label, Spinner } from "tamagui";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
+import { useLedgerStore } from "@/stores/useLedgerStore";
+import { useTransactionStore } from "@/stores/useTransactionStore";
 
 const transactionSchema = z.object({
-  type: z.enum(['income', 'expense']),
-  amount: z.string().min(1, 'Amount is required').refine(val => !isNaN(Number(val)) && Number(val) > 0, 'Must be a positive number'),
+  type: z.enum(["income", "expense"]),
+  amount: z
+    .string()
+    .min(1, "Amount is required")
+    .refine(
+      (val) => !isNaN(Number(val)) && Number(val) > 0,
+      "Must be a positive number",
+    ),
   note: z.string().optional(),
 });
 
@@ -21,15 +27,20 @@ export default function AddTransactionTab() {
   const { activeLedgerId } = useLedgerStore();
   const { addTransaction, isLoading } = useTransactionStore();
 
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [type, setType] = useState<"income" | "expense">("expense");
 
-  const { control, handleSubmit, reset, formState: { errors } } = useForm<TransactionFormData>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      type: 'expense',
-      amount: '',
-      note: '',
-    }
+      type: "expense",
+      amount: "",
+      note: "",
+    },
   });
 
   const onSubmit = async (data: TransactionFormData) => {
@@ -44,7 +55,7 @@ export default function AddTransactionTab() {
     });
 
     reset();
-    router.replace('/(tabs)/');
+    router.replace("/(tabs)");
   };
 
   if (!activeLedgerId) {
@@ -58,20 +69,19 @@ export default function AddTransactionTab() {
   return (
     <ScrollView style={{ flex: 1 }}>
       <YStack f={1} p="$4" gap="$4">
-        
         {/* Type Selector */}
         <XStack gap="$2" mb="$2">
-          <Button 
-            f={1} 
-            theme={type === 'expense' ? 'red' : 'active'}
-            onPress={() => setType('expense')}
+          <Button
+            f={1}
+            theme={type === "expense" ? "red" : "active"}
+            onPress={() => setType("expense")}
           >
             Expense
           </Button>
-          <Button 
-            f={1} 
-            theme={type === 'income' ? 'green' : 'active'}
-            onPress={() => setType('income')}
+          <Button
+            f={1}
+            theme={type === "income" ? "green" : "active"}
+            onPress={() => setType("income")}
           >
             Income
           </Button>
@@ -91,11 +101,15 @@ export default function AddTransactionTab() {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
-                borderColor={errors.amount ? '$red10' : undefined}
+                borderColor={errors.amount ? "$red10" : undefined}
               />
             )}
           />
-          {errors.amount && <Text color="$red10" fontSize="$2">{errors.amount.message}</Text>}
+          {errors.amount && (
+            <Text color="$red10" fontSize="$2">
+              {errors.amount.message}
+            </Text>
+          )}
         </YStack>
 
         <YStack gap="$2">
@@ -117,14 +131,25 @@ export default function AddTransactionTab() {
 
         {/* Actions */}
         <XStack gap="$3" mt="$4">
-          <Button f={1} variant="outlined" onPress={() => { reset(); router.replace('/(tabs)/'); }}>
+          <Button
+            f={1}
+            variant="outlined"
+            onPress={() => {
+              reset();
+              router.replace("/(tabs)");
+            }}
+          >
             Cancel
           </Button>
-          <Button f={1} theme="active" onPress={handleSubmit(onSubmit)} disabled={isLoading}>
-            {isLoading ? <Spinner /> : 'Save'}
+          <Button
+            f={1}
+            theme="active"
+            onPress={handleSubmit(onSubmit)}
+            disabled={isLoading}
+          >
+            {isLoading ? <Spinner /> : "Save"}
           </Button>
         </XStack>
-
       </YStack>
     </ScrollView>
   );
