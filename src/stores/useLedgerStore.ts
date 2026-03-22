@@ -10,7 +10,7 @@ interface LedgerState {
   error: string | null;
 
   fetchLedgers: (userId: string) => Promise<void>;
-  setActiveLedger: (id: string) => void;
+  setActiveLedger: (id: string, userId?: string) => void;
   addLedger: (
     ledger: Omit<Ledger, "id" | "createdAt" | "updatedAt">,
   ) => Promise<void>;
@@ -30,23 +30,38 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
   fetchLedgers: async (userId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const ledgers = await LedgerService.getLedgersByUserId(userId);
+      // ensureDefaultLedger returns existing ledgers or creates a
+      // default "Personal" ledger when none exist yet.
+      const ledgers = await LedgerService.ensureDefaultLedger(userId);
+
+      // Restore the persisted active ledger when available, otherwise
+      // fall back to the first ledger in the list.
+      let activeId = get().activeLedgerId;
+      if (!activeId) {
+        const persisted = await LedgerService.getDefaultLedgerId(userId);
+        const isValid = persisted && ledgers.some((l) => l.id === persisted);
+        activeId = isValid ? persisted : (ledgers[0]?.id ?? null);
+      }
+
+      set({ ledgers, isLoading: false, activeLedgerId: activeId });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch ledgers";
       set({
-        ledgers,
-        isLoading: false,
-        activeLedgerId:
-          get().activeLedgerId || (ledgers.length > 0 ? ledgers[0].id : null),
-      });
-    } catch (err: any) {
-      set({
-        error: err.message || "Failed to fetch ledgers",
+        error: message,
         isLoading: false,
       });
     }
   },
 
-  setActiveLedger: (id: string) => {
+  setActiveLedger: (id: string, userId?: string) => {
     set({ activeLedgerId: id });
+    // Fire-and-forget: persist the selection so it survives app restarts.
+    if (userId) {
+      LedgerService.setDefaultLedgerId(userId, id).catch((err: unknown) => {
+        console.error("Failed to persist active ledger selection", err);
+      });
+    }
   },
 
   addLedger: async (ledger) => {
@@ -60,8 +75,10 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         activeLedgerId: get().activeLedgerId || newLedger.id,
       });
       SyncEngine.triggerBackgroundSync();
-    } catch (err: any) {
-      set({ error: err.message || "Failed to add ledger", isLoading: false });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to add ledger";
+      set({ error: message, isLoading: false });
     }
   },
 
@@ -77,9 +94,11 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         isLoading: false,
       });
       SyncEngine.triggerBackgroundSync();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update ledger";
       set({
-        error: err.message || "Failed to update ledger",
+        error: message,
         isLoading: false,
       });
     }
@@ -102,9 +121,11 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         isLoading: false,
       });
       SyncEngine.triggerBackgroundSync();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete ledger";
       set({
-        error: err.message || "Failed to delete ledger",
+        error: message,
         isLoading: false,
       });
     }

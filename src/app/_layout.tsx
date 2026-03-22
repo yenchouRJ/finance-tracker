@@ -14,6 +14,7 @@ import { initDB } from "@/services/db/schema";
 
 import { useColorScheme } from "@/components/useColorScheme";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useLedgerStore } from "@/stores/useLedgerStore";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -63,6 +64,21 @@ export default function RootLayout() {
       return () => unsubscribe();
     }
   }, [dbInitialized]);
+
+  // Once the DB is ready, ensure a default ledger exists for the current
+  // user (or the offline "local-user" fallback). This runs early in the
+  // boot sequence so every tab has an activeLedgerId available.
+  const user = useAuthStore((state) => state.user);
+  const fetchLedgers = useLedgerStore((state) => state.fetchLedgers);
+
+  useEffect(() => {
+    if (dbInitialized) {
+      const userId = user?.id || "local-user";
+      fetchLedgers(userId).catch((err: unknown) => {
+        console.error("Failed to initialise ledgers", err);
+      });
+    }
+  }, [dbInitialized, user?.id, fetchLedgers]);
 
   useEffect(() => {
     if (loaded && dbInitialized) {

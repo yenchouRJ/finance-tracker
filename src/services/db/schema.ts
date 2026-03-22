@@ -66,6 +66,15 @@ export async function initDB() {
     );
   `);
 
+  // Seed a local-user row so unauthenticated / offline usage
+  // can satisfy the FK constraint on the ledgers table.
+  const now = Date.now();
+  await db.runAsync(
+    `INSERT OR IGNORE INTO users (id, displayName, email, photoUrl, defaultLedgerId, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?);`,
+    ["local-user", "Local User", "", null, null, now, now],
+  );
+
   return db;
 }
 

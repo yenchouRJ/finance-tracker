@@ -19,7 +19,7 @@ import { ChevronLeft, ChevronRight, Plus } from "@tamagui/lucide-icons";
 
 export default function HomeTab() {
   const { user } = useAuthStore();
-  const { activeLedgerId, ledgers, fetchLedgers, addLedger, setActiveLedger } =
+  const { activeLedgerId, ledgers, addLedger, setActiveLedger } =
     useLedgerStore();
   const { transactions, fetchTransactionsByMonth, isLoading } =
     useTransactionStore();
@@ -31,21 +31,8 @@ export default function HomeTab() {
 
   const userId = user?.id || "local-user";
 
-  useEffect(() => {
-    fetchLedgers(userId).then(() => {
-      // If ledgers are empty, auto-create a default 'Personal' ledger
-      const { ledgers: currentLedgers } = useLedgerStore.getState();
-      if (currentLedgers.length === 0) {
-        addLedger({
-          userId,
-          name: "Personal",
-          currency: "USD",
-          archived: false,
-        });
-      }
-    });
-  }, [fetchLedgers, userId, addLedger]);
-
+  // Default ledger creation is handled in _layout.tsx during app boot.
+  // This effect only fetches transactions for the currently active ledger.
   useEffect(() => {
     if (activeLedgerId) {
       fetchTransactionsByMonth(
@@ -260,7 +247,7 @@ export default function HomeTab() {
                       theme={l.id === activeLedgerId ? "active" : undefined}
                       variant={l.id === activeLedgerId ? undefined : "outlined"}
                       onPress={() => {
-                        setActiveLedger(l.id);
+                        setActiveLedger(l.id, userId);
                         setIsSheetOpen(false);
                       }}
                     >
