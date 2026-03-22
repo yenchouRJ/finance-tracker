@@ -1,17 +1,23 @@
-import { create } from 'zustand';
-import { Ledger } from '@/types';
-import { LedgerService } from '@/features/ledgers/ledgerService';
+import { create } from "zustand";
+import { Ledger } from "@/types";
+import { LedgerService } from "@/features/ledgers/ledgerService";
+import { SyncEngine } from "@/features/sync/syncEngine";
 
 interface LedgerState {
   ledgers: Ledger[];
   activeLedgerId: string | null;
   isLoading: boolean;
   error: string | null;
-  
+
   fetchLedgers: (userId: string) => Promise<void>;
   setActiveLedger: (id: string) => void;
-  addLedger: (ledger: Omit<Ledger, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateLedger: (id: string, updates: Partial<Omit<Ledger, 'id' | 'createdAt'>>) => Promise<void>;
+  addLedger: (
+    ledger: Omit<Ledger, "id" | "createdAt" | "updatedAt">,
+  ) => Promise<void>;
+  updateLedger: (
+    id: string,
+    updates: Partial<Omit<Ledger, "id" | "createdAt">>,
+  ) => Promise<void>;
   deleteLedger: (id: string) => Promise<void>;
 }
 
@@ -25,13 +31,17 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const ledgers = await LedgerService.getLedgersByUserId(userId);
-      set({ 
-        ledgers, 
+      set({
+        ledgers,
         isLoading: false,
-        activeLedgerId: get().activeLedgerId || (ledgers.length > 0 ? ledgers[0].id : null)
+        activeLedgerId:
+          get().activeLedgerId || (ledgers.length > 0 ? ledgers[0].id : null),
       });
     } catch (err: any) {
-      set({ error: err.message || 'Failed to fetch ledgers', isLoading: false });
+      set({
+        error: err.message || "Failed to fetch ledgers",
+        isLoading: false,
+      });
     }
   },
 
@@ -44,13 +54,14 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     try {
       const newLedger = await LedgerService.createLedger(ledger);
       const { ledgers } = get();
-      set({ 
-        ledgers: [newLedger, ...ledgers], 
+      set({
+        ledgers: [newLedger, ...ledgers],
         isLoading: false,
-        activeLedgerId: get().activeLedgerId || newLedger.id
+        activeLedgerId: get().activeLedgerId || newLedger.id,
       });
+      SyncEngine.triggerBackgroundSync();
     } catch (err: any) {
-      set({ error: err.message || 'Failed to add ledger', isLoading: false });
+      set({ error: err.message || "Failed to add ledger", isLoading: false });
     }
   },
 
@@ -60,11 +71,17 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
       await LedgerService.updateLedger(id, updates);
       const { ledgers } = get();
       set({
-        ledgers: ledgers.map(l => l.id === id ? { ...l, ...updates, updatedAt: Date.now() } : l),
-        isLoading: false
+        ledgers: ledgers.map((l) =>
+          l.id === id ? { ...l, ...updates, updatedAt: Date.now() } : l,
+        ),
+        isLoading: false,
       });
+      SyncEngine.triggerBackgroundSync();
     } catch (err: any) {
-      set({ error: err.message || 'Failed to update ledger', isLoading: false });
+      set({
+        error: err.message || "Failed to update ledger",
+        isLoading: false,
+      });
     }
   },
 
@@ -73,14 +90,23 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     try {
       await LedgerService.deleteLedger(id);
       const { ledgers, activeLedgerId } = get();
-      const updatedLedgers = ledgers.filter(l => l.id !== id);
+      const updatedLedgers = ledgers.filter((l) => l.id !== id);
       set({
         ledgers: updatedLedgers,
-        activeLedgerId: activeLedgerId === id ? (updatedLedgers.length > 0 ? updatedLedgers[0].id : null) : activeLedgerId,
-        isLoading: false
+        activeLedgerId:
+          activeLedgerId === id
+            ? updatedLedgers.length > 0
+              ? updatedLedgers[0].id
+              : null
+            : activeLedgerId,
+        isLoading: false,
       });
+      SyncEngine.triggerBackgroundSync();
     } catch (err: any) {
-      set({ error: err.message || 'Failed to delete ledger', isLoading: false });
+      set({
+        error: err.message || "Failed to delete ledger",
+        isLoading: false,
+      });
     }
-  }
+  },
 }));

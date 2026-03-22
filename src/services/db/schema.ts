@@ -1,6 +1,6 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from "expo-sqlite";
 
-export const DATABASE_NAME = 'finance-tracker.db';
+export const DATABASE_NAME = "finance-tracker.db";
 
 export async function initDB() {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -58,6 +58,11 @@ export async function initDB() {
       deletedAt INTEGER,
       FOREIGN KEY (ledgerId) REFERENCES ledgers(id) ON DELETE CASCADE,
       FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_state (
+      userId TEXT PRIMARY KEY NOT NULL,
+      lastSyncAt INTEGER NOT NULL
     );
   `);
 
