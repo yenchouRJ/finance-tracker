@@ -88,8 +88,12 @@ npm install --save-dev jest @testing-library/react-native @testing-library/jest-
 
 ### Linting & Formatting
 ```bash
-npm install --save-dev eslint @eslint/js typescript-eslint eslint-plugin-react eslint-plugin-react-hooks eslint-config-expo prettier eslint-config-prettier
+npm install --save-dev eslint@^9 eslint-config-expo prettier eslint-config-prettier
 ```
+
+> **Important**: Use ESLint v9, not v10. `eslint-plugin-react` (bundled by `eslint-config-expo`)
+> is not yet compatible with ESLint v10. Do not install `eslint-plugin-react` or
+> `eslint-plugin-react-hooks` directly — `eslint-config-expo` provides them.
 
 ## 5. All-in-One Install (Phase 1-3)
 
@@ -106,8 +110,7 @@ npm install zustand react-hook-form zod @hookform/resolvers date-fns uuid
 npx expo install --dev tailwindcss @tailwindcss/postcss postcss
 npm install --save-dev @types/uuid jest @testing-library/react-native \
   @testing-library/jest-native jest-expo ts-jest @types/jest \
-  eslint @eslint/js typescript-eslint eslint-plugin-react eslint-plugin-react-hooks \
-  eslint-config-expo prettier eslint-config-prettier
+  eslint@^9 eslint-config-expo prettier eslint-config-prettier
 ```
 
 ## 6. Configuration Files
@@ -231,3 +234,192 @@ npx expo start --clear
 | @testing-library/react-native       | Component testing          | 1     |
 | eslint-config-expo                  | ESLint rules               | 1     |
 | prettier                            | Code formatting            | 1     |
+
+## 9. Troubleshooting (Phase 1)
+
+### ESLint crashes with `getFilename is not a function`
+
+**Symptom**: Running `npx eslint .` produces:
+```
+TypeError: Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function
+```
+
+**Cause**: `eslint-plugin-react` v7 is incompatible with ESLint v10. The `eslint-config-expo`
+package bundles `eslint-plugin-react` v7, which relies on the `getFilename()` API that was
+removed in ESLint v10.
+
+**Fix**: Downgrade ESLint to v9:
+```bash
+npm install --save-dev eslint@^9
+```
+
+Do **not** install `eslint-plugin-react` or `eslint-plugin-react-hooks` directly —
+`eslint-config-expo` already provides them.
+
+### ESLint config: `require is not defined in ES module scope`
+
+**Symptom**: Running ESLint produces:
+```
+ReferenceError: require is not defined in ES module scope, you can use import instead
+```
+
+**Cause**: The config file `eslint.config.mjs` uses `.mjs` extension (ES module) but contains
+`require()` calls (CommonJS syntax).
+
+**Fix**: Use `import` statements in `.mjs` files. Also use the `.js` extension when importing
+`eslint-config-expo`:
+```js
+// eslint.config.mjs — correct
+import expoConfig from 'eslint-config-expo/flat.js';  // .js extension required
+import prettierConfig from 'eslint-config-prettier';
+
+export default [ ...expoConfig, prettierConfig, /* ... */ ];
+```
+
+### ESLint config: `could not find plugin "@typescript-eslint"`
+
+**Symptom**:
+```
+A configuration object specifies rule "@typescript-eslint/no-unused-vars",
+but could not find plugin "@typescript-eslint".
+```
+
+**Cause**: The `@typescript-eslint` plugin is loaded by `eslint-config-expo` only for
+`*.ts` / `*.tsx` files. Adding `@typescript-eslint/*` rules in a config object without
+a `files` filter means ESLint tries to apply them to all files (including `.js`), where
+the plugin isn't loaded.
+
+**Fix**: Scope TypeScript rules to TypeScript files:
+```js
+{
+  files: ['**/*.ts', '**/*.tsx'],
+  rules: {
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+  },
+}
+```
+
+### Jest warns: `Unknown option "setupFilesAfterSetup"`
+
+**Symptom**: Running `npx jest` shows:
+```
+Validation Warning: Unknown option "setupFilesAfterSetup" with value [...] was found.
+```
+
+**Cause**: Typo in `jest.config.js`. The correct key is `setupFilesAfterEnv`.
+
+**Fix**: In `jest.config.js`, change:
+```diff
+- setupFilesAfterSetup: ['@testing-library/jest-native/extend-expect'],
++ setupFilesAfterEnv: ['@testing-library/jest-native/extend-expect'],
+```
+
+### NativeWind styles not applying
+
+**Symptom**: `className` props on React Native components are ignored; elements render unstyled.
+
+**Cause**: Metro is not configured to process NativeWind, or `global.css` is not imported in
+the root layout.
+
+**Fix**:
+1. Ensure `metro.config.js` wraps the config with `withNativewind`:
+   ```js
+   const { withNativewind } = require('nativewind/metro');
+   module.exports = withNativewind(config, { input: './src/global.css' });
+   ```
+2. Ensure `src/global.css` has the correct Tailwind v4 imports:
+   ```css
+   @import 'tailwindcss/theme.css' layer(theme);
+   @import 'tailwindcss/preflight.css' layer(base);
+   @import 'tailwindcss/utilities.css';
+   @import 'nativewind/theme';
+   ```
+3. Ensure the root layout (`src/app/_layout.tsx`) imports global.css:
+   ```ts
+   import '@/global.css';
+   ```
+4. Clear the Metro cache and restart:
+   ```bash
+   npx expo start --clear
+   ```
+
+### Path aliases (`@/`) not resolving
+
+**Symptom**: TypeScript or Metro can't find modules imported with `@/...`.
+
+**Fix**: Ensure `tsconfig.json` has:
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"]
+    }
+  }
+}
+```
+Metro resolves these automatically via `expo/tsconfig.base`. If it still fails, clear the
+cache: `npx expo start --clear`.
+
+## 10. Troubleshooting (Phase 2)
+
+### Files with JSX must use `.tsx` extension
+
+**Symptom**: TypeScript errors like `'>' expected` or `')' expected` in a `.ts` file that
+contains JSX (e.g., `<View>`, `<Text>`).
+
+**Cause**: TypeScript treats `.ts` files as pure TypeScript without JSX support. Any file
+that renders React components (returns JSX) must use the `.tsx` extension.
+
+**Fix**: Rename the file from `.ts` to `.tsx`:
+```bash
+mv src/hooks/use-database.ts src/hooks/use-database.tsx
+```
+
+### `console.log` triggers ESLint `no-console` warning
+
+**Symptom**: ESLint warns: `Unexpected console statement. Only these console methods are allowed: warn, error`.
+
+**Cause**: The `eslint-config-expo` configuration restricts `console` usage to `console.warn`
+and `console.error` only.
+
+**Fix**: Use `console.warn` for informational log messages and `console.error` for error messages.
+Do not use `console.log` in production code.
+
+### expo-sqlite `SQLiteBindValue` type for parameterized queries
+
+**Symptom**: TypeScript error: `Argument of type 'unknown' is not assignable to parameter of type 'SQLiteBindValue'`.
+
+**Cause**: The `runAsync` and `getAllAsync` methods from expo-sqlite expect parameters of type
+`SQLiteBindValue` (`string | number | null | boolean | Uint8Array`), not `unknown`.
+
+**Fix**: Type your parameter arrays explicitly:
+```typescript
+import type { SQLiteBindValue } from 'expo-sqlite';
+
+const values: SQLiteBindValue[] = [];
+values.push(data.name);  // string values are fine
+await db.runAsync(`UPDATE ... SET ... WHERE id = ?`, ...values);
+```
+
+### expo-sqlite web: `Unable to resolve module ./wa-sqlite/wa-sqlite.wasm`
+
+**Symptom**: When running `npx expo start --web`, Metro throws:
+```
+Resolution Error: Unable to resolve module ./wa-sqlite/wa-sqlite.wasm
+```
+
+**Cause**: `expo-sqlite` uses a WebAssembly (`.wasm`) binary for its web implementation
+(via `wa-sqlite`). Metro bundler doesn't recognize `.wasm` files as assets by default and
+tries to resolve them as JavaScript source modules.
+
+**Fix**: Add `wasm` to Metro's asset extensions in `metro.config.js`:
+```js
+const config = getDefaultConfig(__dirname);
+config.resolver.assetExts.push('wasm');
+```
+
+Then restart the dev server with cache cleared:
+```bash
+npx expo start --web --clear
+```
