@@ -11,23 +11,17 @@ export default function TabLayout(): React.ReactElement {
   const activeTint = '#3b82f6';
   const inactiveTint = isDark ? '#6b7280' : '#9ca3af';
   const tabBarBackground = isDark ? '#0a0a0a' : '#ffffff';
-  const headerBackground = isDark ? '#0a0a0a' : '#ffffff';
-  const headerTint = isDark ? '#ffffff' : '#000000';
 
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: activeTint,
         tabBarInactiveTintColor: inactiveTint,
         tabBarStyle: {
           backgroundColor: tabBarBackground,
           borderTopColor: isDark ? '#1f2937' : '#e5e7eb',
         },
-        headerStyle: {
-          backgroundColor: headerBackground,
-        },
-        headerTintColor: headerTint,
-        headerShadowVisible: false,
       }}
     >
       <Tabs.Screen

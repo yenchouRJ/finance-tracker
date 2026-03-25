@@ -221,7 +221,7 @@ npx expo start --clear
 | date-fns                            | Date formatting            | 3     |
 | react-native-gifted-charts          | Charts & graphs            | 3     |
 | react-native-svg                    | SVG rendering (charts)     | 3     |
-| react-native-linear-gradient        | Gradient backgrounds       | 3     |
+| react-native-linear-gradient        | Gradient backgrounds (charts) — **replaced by `expo-linear-gradient`** | 3     |
 | react-native-gesture-handler        | Swipe gestures             | 3     |
 | expo-haptics                        | Haptic feedback            | 3     |
 | uuid                                | UUID generation            | 2     |
@@ -422,4 +422,106 @@ config.resolver.assetExts.push('wasm');
 Then restart the dev server with cache cleared:
 ```bash
 npx expo start --web --clear
+```
+
+## 11. Troubleshooting (Phase 3)
+
+### NativeWind CSS not compiling on web (raw `@tailwind` directives visible)
+
+**Symptom**: On web, elements are unstyled. Inspecting the HTML shows `<style>` tags containing
+raw `@tailwind utilities;` and `@plugin` directives instead of compiled CSS utility classes.
+
+**Cause**: NativeWind v5 with Tailwind CSS v4 requires PostCSS configuration for web CSS
+compilation. Without `postcss.config.js`, the CSS pipeline doesn't process Tailwind directives
+into actual utility classes.
+
+**Fix**: Create `postcss.config.js` in the project root:
+```js
+module.exports = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+};
+```
+
+Then restart the dev server with cache cleared:
+```bash
+npx expo start --web --clear
+```
+
+### Duplicate headers on tab screens
+
+**Symptom**: Each tab screen shows two titles — one from the tab navigator header bar and
+another rendered by the screen component itself (e.g., via `<Text>` inside `SafeAreaView`).
+
+**Cause**: By default, `expo-router` `<Tabs>` renders a header bar for each screen. If the
+screen also renders its own title, both appear.
+
+**Fix**: Add `headerShown: false` to the `<Tabs>` `screenOptions` in `src/app/(tabs)/_layout.tsx`:
+```tsx
+<Tabs
+  screenOptions={{
+    headerShown: false,
+    // ... other options
+  }}
+>
+```
+
+### `react-native-linear-gradient` not compatible with Expo managed workflow
+
+**Symptom**: Build errors or Metro resolution failures when using `react-native-linear-gradient`
+with `react-native-gifted-charts`.
+
+**Cause**: `react-native-linear-gradient` requires native linking and is not compatible with
+Expo managed workflow (Expo Go). `react-native-gifted-charts` lists it as a peer dependency
+for gradient backgrounds in charts.
+
+**Fix**: Use `expo-linear-gradient` instead:
+```bash
+npm uninstall react-native-linear-gradient
+npx expo install expo-linear-gradient
+```
+
+Note: `react-native-gifted-charts` will use `expo-linear-gradient` automatically if
+`react-native-linear-gradient` is not available.
+
+### Zod `.default()` causes type mismatch with react-hook-form resolver
+
+**Symptom**: TypeScript error when using `zodResolver` with a schema that has `.default()` on
+fields. The inferred input type and output type diverge, causing the resolver generic to fail.
+
+**Cause**: Zod's `.default()` makes a field optional in the input type but required in the
+output type. `react-hook-form`'s `zodResolver` expects the input and output types to align.
+
+**Fix**: Remove `.default()` from Zod schema fields. Instead, set defaults in the `useForm`
+`defaultValues` option:
+```typescript
+// Schema — no .default()
+const transactionSchema = z.object({
+  type: z.enum(['income', 'expense']),
+  amount: z.string().min(1, 'Amount is required'),
+  // ...
+});
+
+type TransactionFormData = z.infer<typeof transactionSchema>;
+
+// Form — set defaults here
+const form = useForm<TransactionFormData, unknown, TransactionFormData>({
+  resolver: zodResolver(transactionSchema),
+  defaultValues: {
+    type: 'expense',
+    amount: '',
+    // ...
+  },
+});
+```
+
+### npm install fails with peer dependency conflicts
+
+**Symptom**: `npm install` fails with `ERESOLVE unable to resolve dependency tree`, typically
+involving ESLint or other packages with strict peer dependency requirements.
+
+**Fix**: Use the `--legacy-peer-deps` flag:
+```bash
+npm install --legacy-peer-deps
 ```
