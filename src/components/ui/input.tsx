@@ -17,9 +17,7 @@ export function Input({
 
   return (
     <View className="w-full">
-      {label && (
-        <Text className="mb-1.5 text-sm font-medium text-gray-300">{label}</Text>
-      )}
+      {label && <Text className="mb-1.5 text-sm font-medium text-gray-300">{label}</Text>}
       <TextInput
         className={`
           w-full rounded-lg border px-4 py-3
@@ -31,10 +29,10 @@ export function Input({
         placeholderTextColor="#6b7280"
         {...props}
       />
-      {error && <Text className="mt-1 text-xs text-red-400">{error}</Text>}
-      {helperText && !error && (
+      {error ? <Text className="mt-1 text-xs text-red-400">{error}</Text> : null}
+      {helperText && !error ? (
         <Text className="mt-1 text-xs text-gray-500">{helperText}</Text>
-      )}
+      ) : null}
     </View>
   );
 }

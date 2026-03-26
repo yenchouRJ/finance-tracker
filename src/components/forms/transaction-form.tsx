@@ -1,16 +1,14 @@
-import { useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { Button, Input } from '@/components/ui';
 import { CategorySelector } from '@/components/shared/category-selector';
+import { DatePicker } from '@/components/shared/date-picker';
 import {
   transactionSchema,
   type TransactionFormData,
 } from '@/validators/transaction';
-import { formatDate } from '@/lib/date';
 import { MAX_NOTE_LENGTH } from '@/lib/constants';
 import type { TransactionType } from '@/types/transaction';
 
@@ -54,20 +52,11 @@ export function TransactionForm({
 
   const selectedType = watch('type');
   const selectedCategory = watch('category');
-  const selectedDate = watch('date');
-  const [showDateInput, setShowDateInput] = useState(false);
 
   const handleTypeToggle = (type: TransactionType): void => {
     setValue('type', type);
     // Reset category when type changes
     setValue('category', '');
-  };
-
-  const handleDateChange = (dateString: string): void => {
-    // Validate basic date format YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      setValue('date', dateString);
-    }
   };
 
   return (
@@ -134,46 +123,18 @@ export function TransactionForm({
 
       {/* Date */}
       <View className="mb-6">
-        <Text className="mb-1.5 text-sm font-medium text-gray-300">Date</Text>
-        <Pressable
-          onPress={() => setShowDateInput(!showDateInput)}
-          className="flex-row items-center rounded-lg border border-gray-700 bg-gray-900 px-4 py-3"
-        >
-          <MaterialCommunityIcons name="calendar" size={20} color="#9ca3af" />
-          <Text className="ml-3 flex-1 text-base text-white">
-            {selectedDate
-              ? formatDate(new Date(selectedDate + 'T00:00:00'))
-              : 'Select date'}
-          </Text>
-          <MaterialCommunityIcons
-            name={showDateInput ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color="#9ca3af"
-          />
-        </Pressable>
-        {showDateInput && (
-          <View className="mt-2">
-            <Controller
-              control={control}
-              name="date"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  placeholder="YYYY-MM-DD"
-                  value={value}
-                  onChangeText={(text) => {
-                    onChange(text);
-                    handleDateChange(text);
-                  }}
-                  error={errors.date?.message}
-                  helperText="Format: YYYY-MM-DD (e.g. 2026-03-24)"
-                />
-              )}
+        <Controller
+          control={control}
+          name="date"
+          render={({ field: { onChange, value } }) => (
+            <DatePicker
+              label="Date"
+              value={value}
+              onChange={onChange}
+              error={errors.date?.message}
             />
-          </View>
-        )}
-        {errors.date && !showDateInput && (
-          <Text className="mt-1 text-xs text-red-400">{errors.date.message}</Text>
-        )}
+          )}
+        />
       </View>
 
       {/* Category */}
